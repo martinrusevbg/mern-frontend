@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import { Redirect } from 'react-router-dom';
 import { connect } from "react-redux";
+import UploadFiles from "./upload-files.component";
 
 class Profile extends Component {
-
     render() {
         const { user: currentUser } = this.props;
 
@@ -33,6 +33,9 @@ class Profile extends Component {
                     {currentUser.roles &&
                     currentUser.roles.map((role, index) => <li key={index}>{role}</li>)}
                 </ul>
+
+                <UploadFiles />
+
             </div>
         );
     }
