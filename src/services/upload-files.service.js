@@ -37,12 +37,23 @@ class UploadFilesService {
         })
     }
 
-    getFiles() {
-        return axios.get(API_URL+"files");
+    getFiles(page) {
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        return axios.get(API_URL+"files", {
+            headers: {
+                'x-access-token': user.accessToken
+            }
+        });
     }
 
     deleteFile(name) {
-        return axios.delete(API_URL+"file/"+name);
+        const user = JSON.parse(localStorage.getItem('user'));
+        return axios.delete(API_URL+"file/"+name,{
+            headers: {
+                'x-access-token': user.accessToken
+            }
+        });
     }
 
     convertWordArrayToUint8Array(wordArray) {
@@ -61,10 +72,14 @@ class UploadFilesService {
 
     getFile(name,password) {
         let __self = this;
+        const user = JSON.parse(localStorage.getItem('user'));
         return axios({
             url: API_URL+"file/"+name,
             method: 'GET',
             responseType: 'blob',
+            headers: {
+                'x-access-token': user.accessToken
+            }
         }).then(function(response){
             let file = response.data;
             let reader = new FileReader();
