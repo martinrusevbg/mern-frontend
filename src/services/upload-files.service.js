@@ -13,7 +13,6 @@ class UploadFilesService {
                 let reader = new FileReader();
                 reader.onload = () => {
                     let key = password;
-                    console.log("KEY", key);
                     let wordArray = CryptoJS.lib.WordArray.create(reader.result);
                     let encrypted = CryptoJS.AES.encrypt(wordArray, key).toString();
                     let fileEnc = new Blob([encrypted]);
@@ -37,10 +36,20 @@ class UploadFilesService {
         })
     }
 
-    getFiles(page) {
+    getFiles(page, perpage, search) {
         const user = JSON.parse(localStorage.getItem('user'));
 
-        return axios.get(API_URL+"files", {
+        return axios.get(API_URL+"files?page="+page+"&perpage="+perpage+"&search="+search, {
+            headers: {
+                'x-access-token': user.accessToken
+            }
+        });
+    }
+
+    getFileInfo(id) {
+        const user = JSON.parse(localStorage.getItem('user'));
+
+        return axios.get(API_URL+"info?id="+id, {
             headers: {
                 'x-access-token': user.accessToken
             }
@@ -54,6 +63,29 @@ class UploadFilesService {
                 'x-access-token': user.accessToken
             }
         });
+    }
+
+    shareFile(file, email, phone) {
+        return new Promise((resolve, reject) => {
+            let data = {
+                file: file,
+                email: email,
+                country_code: '+359',
+                phone: phone
+            }
+            const user = JSON.parse(localStorage.getItem('user'));
+            return axios.post(API_URL + "share", data, {
+                headers: {
+                    "Content-Type": "application/json",
+                    'x-access-token': user.accessToken
+                }
+            }).then(response => {
+                if(response)
+                    resolve(true);
+            }).catch(err => {
+                reject('Could not upload the file!');
+            })
+        })
     }
 
     convertWordArrayToUint8Array(wordArray) {

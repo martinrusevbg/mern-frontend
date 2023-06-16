@@ -1,6 +1,16 @@
-import React, { Component } from "react";
+import React, { Component } from 'react';
 import UploadService from "../services/upload-files.service";
 import MyModal from "./mymodal.component";
+import ShareModal from "./sharemodal.component";
+import DataTable from 'react-data-table-component';
+import {RiDeleteBin5Fill, RiFileInfoFill, RiShareLine} from 'react-icons/ri';
+
+const link = {
+    color: '#198754',
+    textDecoration: 'underline',
+    cursor: 'pointer',
+    fontsize: '20px'
+};
 
 export default class UploadFiles extends Component {
     constructor(props) {
@@ -10,11 +20,42 @@ export default class UploadFiles extends Component {
             selectedFiles: undefined,
             currentFile: undefined,
             progress: 0,
+            page: 1,
+            search: '',
+            info: '',
+            countPerPage: 10,
             message: "",
             fileInfos: [],
+            columns : [
+                {
+                    name: 'File Name',
+                    cell: row => <a style={link} key={row.url} onClick={() => this.setFileName(row.name)} >{row.name}</a>
+                },
+                {
+                    name: 'Info',
+                    cell: row => <a style={link} key={row.url} onClick={() => this.getInfo(row.id)} ><RiFileInfoFill  size={25}/> </a>,
+                    right: true,
+                    width: '90px'
+                },
+                {
+                    name: 'Share',
+                    cell: row => <a style={link} key={row.url} onClick={() => this.shareFileName(row.name)} ><RiShareLine  size={25}/> </a>,
+                    right: true,
+                    width: '90px'
+                },
+                {
+                    name: 'Delete',
+                    cell: row => <a style={link} key={row.url} onClick={() => this.delFileName(row.name)} ><RiDeleteBin5Fill size={25}/></a>,
+                    right: true,
+                    width: '90px'
+                }
+            ],
             show: false,
             title: '',
             body: '',
+            showShare: false,
+            titleShare: '',
+            bodyShare: '',
             filename: "",
             password: ""
         };
@@ -40,14 +81,19 @@ export default class UploadFiles extends Component {
         this.filename = name;
     }
 
+    shareFileName(name) {
+        this.handleShowShare();
+        this.filename = name;
+    }
+
     delFileName(name) {
         UploadService.deleteFile(name, (event) => {
-            UploadService.getFiles();
+            UploadService.getFiles(this.state.page, this.state.countPerPage, this.state.search);
         }).then((response) => {
             this.setState({
                 message: response.data.message
             });
-            return UploadService.getFiles();
+            return UploadService.getFiles(this.state.page, this.state.countPerPage, this.state.search);
         })
             .then((files) => {
                 this.setState({
@@ -58,7 +104,7 @@ export default class UploadFiles extends Component {
                 this.setState({
                     message: 'Could not delete the file!'
                 });
-                return UploadService.getFiles();
+                return UploadService.getFiles(this.state.page, this.state.countPerPage, this.state.search);
             });
     }
 
@@ -87,7 +133,7 @@ export default class UploadFiles extends Component {
                 this.setState({
                     message: response.data.message
                 });
-                return UploadService.getFiles();
+                return UploadService.getFiles(this.state.page, this.state.countPerPage, this.state.search);
             })
             .then((files) => {
                 this.setState({
@@ -121,10 +167,33 @@ export default class UploadFiles extends Component {
         });
     };
 
+    handleShowShare = () => {
+        this.setState({
+            showShare: true,
+            titleShare: 'Share File',
+            bodyShare: ''
+        });
+    };
+
     onSubmit= (fromModal) => {
         UploadService.getFile(this.filename, fromModal.password,(event) => {
         })
         this.handleClose();
+    };
+
+    onSubmitShare= (fromModal) => {
+        UploadService.shareFile(this.filename, fromModal.email, fromModal.phone ,(event) => {
+        }).then((response) => {
+            if(response)
+                return UploadService.getFiles(this.state.page, this.state.countPerPage, this.state.search);
+        })
+        this.handleCloseShare();
+    };
+
+    handleCloseShare = () => {
+        this.setState({
+            showShare: false
+        });
     };
 
     handleClose = () => {
@@ -133,8 +202,47 @@ export default class UploadFiles extends Component {
         });
     };
 
+    setPage = (page) => {
+        this.setState({
+            page: page
+        });
+        UploadService.getFiles(page, this.state.countPerPage, this.state.search).then((response) => {
+            this.setState({
+                fileInfos: response.data,
+            });
+        });
+    };
+
+    getInfo = (id) => {
+        UploadService.getFileInfo(id).then((response) => {
+        });
+    };
+
+    onChangeSearchTitle = (e) => {
+        const searchTitle = e.target.value;
+        this.setState({
+            search: searchTitle
+        });
+        UploadService.getFiles(this.state.page, this.state.countPerPage, searchTitle).then((response) => {
+            this.setState({
+                fileInfos: response.data,
+            });
+        });
+    };
+
+    handlePerRowsChange(perPage) {
+        this.setState({
+            countPerPage: perPage
+        });
+        UploadService.getFiles(this.state.page, perPage, this.state.search).then((response) => {
+            this.setState({
+                fileInfos: response.data,
+            });
+        });
+    }
+
     componentDidMount() {
-        UploadService.getFiles().then((response) => {
+        UploadService.getFiles(this.state.page, this.state.countPerPage, this.state.search).then((response) => {
             this.setState({
                 fileInfos: response.data,
             });
@@ -148,6 +256,9 @@ export default class UploadFiles extends Component {
             progress,
             message,
             fileInfos,
+            columns,
+            countPerPage,
+            page
         } = this.state;
 
         return (
@@ -168,7 +279,7 @@ export default class UploadFiles extends Component {
                 )}
 
                 <label className="btn btn-default">
-                    <input multiple type="file" onChange={this.selectFile} key={this.state.currentFile} />
+                   Select file: <input multiple type="file" onChange={this.selectFile} key={this.state.currentFile} />
                 </label>
 
                 <label className="btn btn-default">Password:
@@ -187,16 +298,34 @@ export default class UploadFiles extends Component {
                 </div>
 
                 <div className="card">
-                    <div className="card-header">List of Files</div>
-                    <ul className="list-group list-group-flush">
-                        {fileInfos &&
-                        fileInfos.map((file, index) => (
-                            <li className="list-group-item" key={index}>
-                                <a className={`click`} key={file.url} onClick={() => this.setFileName(file.name)} >{file.name}</a>
-                                <a className={`click right`} onClick={() => this.delFileName(file.name)}>Delete</a>
-                            </li>
-                        ))}
-                    </ul>
+                    <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Search by file name"
+                        value={this.state.search}
+                        onChange={this.onChangeSearchTitle}
+                    />
+                    <DataTable
+                        // title="Your files"
+                        columns={columns}
+                        data={fileInfos.files}
+                        highlightOnHover
+                        pagination
+                        paginationServer
+                        paginationTotalRows={fileInfos.total}
+                        paginationPerPage={countPerPage}
+                        onChangeRowsPerPage={ perpage => this.handlePerRowsChange(perpage)}
+                        onChangePage={page => this.setPage(page)}
+                    />
+                    {/*<ul className="list-group list-group-flush">*/}
+                    {/*    {fileInfos &&*/}
+                    {/*    fileInfos.map((file, index) => (*/}
+                    {/*        <li className="list-group-item" key={index}>*/}
+                    {/*            <a className={`click`} key={file.url} onClick={() => this.setFileName(file.name)} >{file.name}</a>*/}
+                    {/*            <a className={`click right`} onClick={() => this.delFileName(file.name)}>Delete</a>*/}
+                    {/*        </li>*/}
+                    {/*    ))}*/}
+                    {/*</ul>*/}
                 </div>
                 <MyModal
                     show={this.state.show}
@@ -205,6 +334,13 @@ export default class UploadFiles extends Component {
                     onClick={this.handleClose}
                     onSubmit={this.onSubmit}
                     onHide={this.handleClose} />
+                <ShareModal
+                    show={this.state.showShare}
+                    title={this.state.titleShare}
+                    body={this.state.bodyShare}
+                    onClick={this.handleCloseShare}
+                    onSubmit={this.onSubmitShare}
+                    onHide={this.handleCloseShare} />
             </div>
         );
     }
